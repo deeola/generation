@@ -2,26 +2,30 @@ const express = require("express");
 const fileUpload = require("express-fileupload");
 const cors = require("cors");
 const mongoose = require("mongoose");
-const path = require('path');
-const bodyParser = require('body-parser')
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
+const path = require("path");
+const bodyParser = require("body-parser");
+const stripe = require("stripe")(
+  "sk_test_51JzqU5IgrivdaqSjU6TGUm1ObLpDRdCNA1UPtltEVpWb2j4oAEp4V84qXRGFQOkzkxcY47Sp9nw6H9EpBn8znr0900XNpjcAaF"
+);
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
+const uuid = require("uuid");
 
 require("dotenv").config();
-
 const app = express();
 app.use(fileUpload());
 const port = process.env.PORT || 5500;
-app.use(bodyParser.urlencoded({ extended: true}));
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, "uploads")));
+
+app.use(cors());
+app.use(express.json({}));
 
 // Use JSON parser for all non-webhook routes
 
 // app.use(express.static(process.env.STATIC_DIR))
 
-
 app.use((req, res, next) => {
-  if (req.originalUrl === '/webhook') {
+  if (req.originalUrl === "/webhook") {
     next();
   } else {
     express.json()(req, res, next);
@@ -29,8 +33,8 @@ app.use((req, res, next) => {
 });
 
 // Stripe requires the raw body to construct the event
-app.post('/webhook', express.raw({type: 'application/json'}), (req, res) => {
-  const sig = req.headers['stripe-signature'];
+app.post("/webhook", express.raw({ type: "application/json" }), (req, res) => {
+  const sig = req.headers["stripe-signature"];
 
   let event;
 
@@ -43,33 +47,20 @@ app.post('/webhook', express.raw({type: 'application/json'}), (req, res) => {
   }
 
   // Successfully constructed event
-  console.log('✅ Success:', event.id);
+  console.log("✅ Success:", event.id);
 
   // Return a response to acknowledge receipt of the event
-  res.json({received: true});
+  res.json({ received: true });
 });
 
-app.post('/create-payment-intent', async (req, res) => {
- 
+app.post("/create-payment-intent", async (req, res) => {
   const paymentIntent = await stripe.paymentIntents.create({
-    amount:1999,
-    currency:'eur',
-    payment_method_types:['card']
-  })
-  res.json({clientSecret: paymentIntent.client_secret})
-} )
-
-
-
-
-
-
-
-app.use(express.static(path.join(__dirname, 'uploads')))
-
-app.use(cors());
-app.use(express.json({}));
-
+    amount: 1999,
+    currency: "eur",
+    payment_method_types: ["card"],
+  });
+  res.json({ clientSecret: paymentIntent.client_secret });
+});
 
 const uri = process.env.ATLAS_URI;
 mongoose.connect(uri);
@@ -91,16 +82,11 @@ app.use("/auth", authRouter);
 app.use("/showcase", showcaseRouter);
 app.use("/search", searchshowcaseRouter);
 app.use("/addnote", noteRouter);
-app.use("/comment",commentRouter);
+app.use("/comment", commentRouter);
 
-
-app.get('/',(req, res) => {
-res.sendFile(path.join(__dirname, 'uploads', ))
-})
-
-
-
-
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "uploads"));
+});
 
 //upload endpoint
 app.post("/upload", (req, res) => {
@@ -110,27 +96,42 @@ app.post("/upload", (req, res) => {
 
   const file = req.files.file;
 
-
-
   file.mv(`${__dirname}/client/public/uploads/${file.name}`, (err) => {
-
-  
     if (err) {
       console.log(err);
       return res.status(500).send(err);
     }
 
     res.json({ fileName: file.name, filePath: `/uploads/${file.name}` });
-
-   
   });
 });
 
+//STRIPE SUBSCRIPTION
+
+app.post("/sub", async (req, res) => {
+  const { email, payment_method } = req.body;
+
+  const customer = await stripe.customers.create({
+    payment_method: payment_method,
+    email: email,
+    invoice_settings: {
+      default_payment_method: payment_method,
+    },
+  });
+
+  const subscription = await stripe.subscriptions.create({
+    customer: customer.id,
+    items: [{ plan: "price_1K0r8WIgrivdaqSjLUvPQCFF" }],
+    expand: ["latest_invoice.payment_intent"],
+  });
+
+  const status = subscription["latest_invoice"]["payment_intent"]["status"];
+  const client_secret =
+    subscription["latest_invoice"]["payment_intent"]["client_secret"];
+
+  res.json({ client_secret: client_secret, status: status });
+});
 
 app.listen(port, () => {
   console.log(`Server is running on port: ${port}`);
 });
-
-
-
-
