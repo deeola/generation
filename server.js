@@ -7,9 +7,7 @@ const bodyParser = require("body-parser");
 const stripe = require("stripe")(
   "sk_test_51JzqU5IgrivdaqSjU6TGUm1ObLpDRdCNA1UPtltEVpWb2j4oAEp4V84qXRGFQOkzkxcY47Sp9nw6H9EpBn8znr0900XNpjcAaF"
 );
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-const uuid = require("uuid");
-
+const multer = require('multer')
 require("dotenv").config();
 const app = express();
 app.use(fileUpload());
@@ -19,6 +17,36 @@ app.use(express.static(path.join(__dirname, "uploads")));
 
 app.use(cors());
 app.use(express.json({}));
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+//FILES STORAGE USING MULTER
+const fileStorageEngine = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "./images"); //important this is a direct path fron our current file to storage location
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "--" + file.originalname);
+   
+  },
+});
+
+
+const upload = multer({storage : fileStorageEngine })
+
+app.post("/single", upload.single("image"), (req, res) => {
+
+  if(req.file !== undefined){
+    console.log(req.file);
+  }
+  
+  res.send("Single file upload success");
+  
+});
+
+
+//END OF MULTER
+
+
 
 // Use JSON parser for all non-webhook routes
 
@@ -76,6 +104,8 @@ const showcaseRouter = require("./routes/showcase");
 const searchshowcaseRouter = require("./routes/search");
 const noteRouter = require("./routes/note");
 const commentRouter = require("./routes/comment");
+const subscribeRouter = require("./routes/subscribe");
+
 //use
 app.use("/users", usersRouter);
 app.use("/auth", authRouter);
@@ -83,6 +113,7 @@ app.use("/showcase", showcaseRouter);
 app.use("/search", searchshowcaseRouter);
 app.use("/addnote", noteRouter);
 app.use("/comment", commentRouter);
+app.use("/subscribe", subscribeRouter);
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "uploads"));
@@ -131,6 +162,8 @@ app.post("/sub", async (req, res) => {
 
   res.json({ client_secret: client_secret, status: status });
 });
+
+
 
 app.listen(port, () => {
   console.log(`Server is running on port: ${port}`);
