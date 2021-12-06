@@ -165,7 +165,15 @@ app.post("/sub", async (req, res) => {
   res.json({ client_secret: client_secret, status: status });
 });
 
+// serve static assests in prod
 
+if(process.env.NODE_ENV === 'production'){
+  //set static folder
+
+  app.use(express.static('client/build'))
+
+  app.get('*',(req, res) =>res.sendFile(path.resolve(__dir, 'client', 'build', 'index.html')) )
+}
 
 app.listen(port, () => {
   console.log(`Server is running on port: ${port}`);
