@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 
 const Schema = mongoose.Schema;
+const {ObjectId} = mongoose.Schema.Types
 
 const ShowcaseSchema = new Schema(
   {
@@ -41,6 +42,9 @@ const ShowcaseSchema = new Schema(
         message:String,
         author : String
     }],
+    
+    candles:[{type:ObjectId,ref:"users"}],
+    
 
     
   },

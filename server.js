@@ -105,6 +105,7 @@ const searchshowcaseRouter = require("./routes/search");
 const noteRouter = require("./routes/note");
 const commentRouter = require("./routes/comment");
 const subscribeRouter = require("./routes/subscribe");
+const candleRouter = require("./routes/candles");
 
 //use
 app.use("/users", usersRouter);
@@ -114,6 +115,7 @@ app.use("/search", searchshowcaseRouter);
 app.use("/addnote", noteRouter);
 app.use("/comment", commentRouter);
 app.use("/subscribe", subscribeRouter);
+app.use("/candle", candleRouter);
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "uploads"));
